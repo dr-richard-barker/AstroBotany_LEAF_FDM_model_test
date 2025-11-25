@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 export enum GravityMode {
   EARTH_1G = 'EARTH_1G',
   MICRO_UG = 'MICRO_UG',
@@ -15,6 +17,10 @@ export interface SimulationState {
   stressLevel: number; // 0-100
   ambientCO2: number; // ppm
   ambientO2: number; // %
+  // Lighting & Biology
+  lightColor: string; // Hex color
+  lightIntensity: number; // 0-100
+  photosyntheticEfficiency: number; // 0-100%
 }
 
 export interface LeafUniforms {
@@ -22,4 +28,6 @@ export interface LeafUniforms {
   uGravityFactor: { value: number }; // 1.0 = 1G, 0.0 = uG
   uBoundaryLayerThickness: { value: number }; // 0.0 to 1.0 visual scale
   uAirVelocity: { value: number };
+  uLightColor: { value: THREE.Color };
+  uLightIntensity: { value: number };
 }

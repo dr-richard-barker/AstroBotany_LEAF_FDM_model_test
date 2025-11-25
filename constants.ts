@@ -1,3 +1,5 @@
+
+
 import { SimulationState, GravityMode } from './types';
 
 // Vertex Shader: Handles the Leaf Morphology (Step 1)
@@ -84,6 +86,8 @@ export const LEAF_FRAGMENT_SHADER = `
   uniform float uTime;
   uniform float uBoundaryLayerThickness; // Visual intensity 0.0 - 1.0
   uniform float uAirVelocity; // Controls turbulence speed
+  uniform vec3 uLightColor; // Dynamic grow light color
+  uniform float uLightIntensity; // Dynamic grow light intensity
 
   // --- NOISE FUNCTIONS ---
 
@@ -141,6 +145,24 @@ export const LEAF_FRAGMENT_SHADER = `
       return t;
   }
 
+  // Generate Stomata Pores
+  float getStomata(vec2 uv) {
+      // High frequency cellular noise
+      float cells = snoise(uv * 200.0);
+      
+      // Create pore-like distribution (more irregular)
+      // Mask with lower freq noise so they appear in patches
+      // 'patch' is a reserved word in some GLSL versions, using 'patchNoise'
+      float patchNoise = snoise(uv * 20.0);
+      
+      // Threshold to create small pores
+      float stomata = smoothstep(0.5, 0.7, cells);
+      
+      // Stomata are often more dense on abaxial (bottom) side, 
+      // but we visualize them here as texture
+      return stomata * (0.5 + 0.5 * patchNoise);
+  }
+
   float getMicroTexture(vec2 uv) {
       float cells = snoise(uv * 60.0);
       return cells;
@@ -150,10 +172,13 @@ export const LEAF_FRAGMENT_SHADER = `
       float veins = getVeins(uv);
       float trichomes = getTrichomes(uv);
       float micro = getMicroTexture(uv);
+      float stomata = getStomata(uv);
+      
       float height = 0.5;
       height -= veins * 0.15; 
       height += trichomes * 0.4; 
       height += micro * 0.05; 
+      height -= stomata * 0.03; // Stomata are depressions
       return height;
   }
 
@@ -194,10 +219,14 @@ export const LEAF_FRAGMENT_SHADER = `
     float veinMask = getVeins(vUv);
     float trichomeMask = getTrichomes(vUv);
     float microMask = getMicroTexture(vUv);
+    float stomataMask = getStomata(vUv);
 
     vec3 albedo = mix(cLeafDark, cLeafLight, microMask * 0.5 + ly * 0.3);
     albedo = mix(albedo, cVein, veinMask * 0.6);
     albedo = mix(albedo, cTrichome, trichomeMask * 0.8);
+    
+    // Stomata appear as tiny, slightly lighter/duller dots
+    albedo = mix(albedo, vec3(0.2, 0.4, 0.2), stomataMask * 0.4);
 
     if (ly < 0.15) {
         albedo = mix(vec3(0.5, 0.6, 0.3), albedo, smoothstep(0.0, 0.15, ly));
@@ -208,15 +237,28 @@ export const LEAF_FRAGMENT_SHADER = `
     vec3 lightPos = vec3(5.0, 8.0, 10.0);
     vec3 lightDir = normalize(lightPos);
     
-    float diff = max(dot(normal, lightDir), 0.0);
+    // Dynamic Grow Light
+    // Calculate diffuse contribution from the dynamic light source
+    // Intensity scales the brightness
+    float dynamicDiff = max(dot(normal, lightDir), 0.0);
+    vec3 lightContribution = uLightColor * dynamicDiff * uLightIntensity;
+    
+    // Ambient light base
+    vec3 ambient = vec3(0.1); 
+
+    // Specular
     vec3 halfDir = normalize(lightDir + viewDir);
     float specAngle = max(dot(normal, halfDir), 0.0);
     float specWax = pow(specAngle, 16.0) * 0.2;
     float specTrichome = pow(specAngle, 64.0) * trichomeMask * 1.5;
+    
+    // Specular color should reflect the light source color slightly
+    vec3 specColor = mix(vec3(1.0), uLightColor, 0.5); 
+
     float rim = 1.0 - max(dot(normal, viewDir), 0.0);
     rim = pow(rim, 3.0);
 
-    vec3 lighting = albedo * (diff + 0.2) + vec3(1.0) * (specWax + specTrichome);
+    vec3 lighting = albedo * (ambient + lightContribution) + specColor * (specWax + specTrichome) * uLightIntensity;
     lighting += vec3(0.5, 0.7, 0.5) * rim * 0.4;
 
     // --- 4. BOUNDARY LAYER & FDM VISUALIZATION ---
@@ -284,5 +326,8 @@ export const INITIAL_STATE: SimulationState = {
   ambientTemperature: 22,
   stressLevel: 0,
   ambientCO2: 400,
-  ambientO2: 21
+  ambientO2: 21,
+  lightColor: '#ffffff',
+  lightIntensity: 1.0, // Multiplier (0-5 range approx in logic)
+  photosyntheticEfficiency: 85
 };

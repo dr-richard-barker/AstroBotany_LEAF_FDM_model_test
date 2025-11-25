@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { SimulationState } from '../types';
 import FluxChart from './FluxChart';
@@ -11,6 +12,7 @@ const TelemetryPanel: React.FC<TelemetryPanelProps> = ({ state }) => {
     { name: 'Boundary Layer', value: state.boundaryLayerThickness, max: 4, unit: 'mm', color: '#00f0ff' },
     { name: 'Leaf Temp', value: state.temperature, max: 40, unit: '°C', color: state.temperature > 30 ? '#ff4d4d' : '#fbbf24' },
     { name: 'Ambient Temp', value: state.ambientTemperature, max: 40, unit: '°C', color: '#9ca3af' },
+    { name: 'Efficiency', value: state.photosyntheticEfficiency, max: 100, unit: '%', color: '#84cc16' }, // Lime green
   ];
 
   return (
@@ -38,6 +40,8 @@ const TelemetryPanel: React.FC<TelemetryPanelProps> = ({ state }) => {
                   }}
                />
              </div>
+             
+             {/* Dynamic Alerts based on Metric Context */}
              {item.name === 'Leaf Temp' && state.temperature > state.ambientTemperature + 2 && (
                  <div className="text-[9px] text-yellow-500 mt-0.5 font-mono">
                      +{(state.temperature - state.ambientTemperature).toFixed(1)}°C Heat Trap Effect
@@ -47,6 +51,11 @@ const TelemetryPanel: React.FC<TelemetryPanelProps> = ({ state }) => {
                 <div className="text-[9px] text-sci-alert mt-1 font-mono italic animate-pulse">
                    ⚠️ Diffusional resistance CRITICAL
                 </div>
+             )}
+             {item.name === 'Efficiency' && item.value < 40 && (
+                 <div className="text-[9px] text-sci-alert mt-1 font-mono italic">
+                     Photosynthesis Inhibited
+                 </div>
              )}
           </div>
         ))}

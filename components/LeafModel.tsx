@@ -1,3 +1,4 @@
+
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -19,6 +20,8 @@ const LeafModel: React.FC<LeafModelProps> = ({ simulationState }) => {
       uGravityFactor: { value: 1.0 },
       uBoundaryLayerThickness: { value: 0.0 },
       uAirVelocity: { value: 1.0 },
+      uLightColor: { value: new THREE.Color(simulationState.lightColor) },
+      uLightIntensity: { value: simulationState.lightIntensity },
     }),
     []
   );
@@ -31,8 +34,6 @@ const LeafModel: React.FC<LeafModelProps> = ({ simulationState }) => {
       }
       
       if (materialRef.current.uniforms.uGravityFactor) {
-        // We now use gravityFactor directly from state (controlled by slider)
-        // Lerping handles smoothing if the input changes abruptly
         materialRef.current.uniforms.uGravityFactor.value = THREE.MathUtils.lerp(
           materialRef.current.uniforms.uGravityFactor.value,
           simulationState.gravityFactor,
@@ -41,8 +42,6 @@ const LeafModel: React.FC<LeafModelProps> = ({ simulationState }) => {
       }
 
       // Map physical boundary layer (mm) to visual opacity (0-1)
-      // 0.4mm (Earth) -> 0.1 visual
-      // 2.0mm (Space) -> 0.8 visual
       const normalizedLayer = Math.min(Math.max((simulationState.boundaryLayerThickness - 0.4) / 2.0, 0), 1);
       const visualLayer = 0.1 + (normalizedLayer * 0.9);
 
@@ -56,6 +55,19 @@ const LeafModel: React.FC<LeafModelProps> = ({ simulationState }) => {
 
       if (materialRef.current.uniforms.uAirVelocity) {
         materialRef.current.uniforms.uAirVelocity.value = simulationState.airVelocity;
+      }
+
+      // Update Light Uniforms
+      if (materialRef.current.uniforms.uLightColor) {
+        materialRef.current.uniforms.uLightColor.value.set(simulationState.lightColor);
+      }
+      if (materialRef.current.uniforms.uLightIntensity) {
+          // Lerp for smooth brightness transition
+          materialRef.current.uniforms.uLightIntensity.value = THREE.MathUtils.lerp(
+              materialRef.current.uniforms.uLightIntensity.value,
+              simulationState.lightIntensity,
+              0.1
+          );
       }
     }
     
