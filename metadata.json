@@ -1,0 +1,5 @@
+{
+  "name": "AstroBotany FDM Simulator",
+  "description": "Interactive fluid dynamics and morphology modeling tool for space botany, simulating leaf hyponasty and boundary layers in microgravity.",
+  "requestFramePermissions": []
+}
